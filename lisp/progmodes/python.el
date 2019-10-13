@@ -2797,6 +2797,7 @@ variable.
          python-pdbtrack-comint-output-filter-function
          python-comint-postoutput-scroll-to-bottom
          comint-watch-for-password-prompt))
+  (set (make-local-variable 'comint-highlight-input) nil)
   (set (make-local-variable 'compilation-error-regexp-alist)
        python-shell-compilation-regexp-alist)
   (add-hook 'completion-at-point-functions
