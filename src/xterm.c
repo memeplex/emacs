@@ -548,6 +548,11 @@ x_end_cr_xlib_drawable (struct frame *f, GC gc)
 
 static int max_fringe_bmp = 0;
 static cairo_pattern_t **fringe_bmp = 0;
+static const unsigned char swap_nibble[16] = {
+  0x0, 0x8, 0x4, 0xc,           /* 0000 1000 0100 1100 */
+  0x2, 0xa, 0x6, 0xe,           /* 0010 1010 0110 1110 */
+  0x1, 0x9, 0x5, 0xd,           /* 0001 1001 0101 1101 */
+  0x3, 0xb, 0x7, 0xf};          /* 0011 1011 0111 1111 */
 
 static void
 x_cr_define_fringe_bitmap (int which, unsigned short *bits, int h, int wd)
@@ -572,10 +577,18 @@ x_cr_define_fringe_bitmap (int which, unsigned short *bits, int h, int wd)
   stride = cairo_image_surface_get_stride (surface);
   data = cairo_image_surface_get_data (surface);
 
-  for (i = 0; i < h; i++)
+  for (i = 0; i < h; i++, data += stride)
     {
-      *((unsigned short *) data) = bits[i];
-      data += stride;
+      unsigned short b = bits[i];
+#ifdef WORDS_BIGENDIAN
+      *((unsigned short *) data) = (b << (16 - wd));
+#else
+      b = (unsigned short)((swap_nibble[b & 0xf] << 12)
+                           | (swap_nibble[(b>>4) & 0xf] << 8)
+                           | (swap_nibble[(b>>8) & 0xf] << 4)
+                           | (swap_nibble[(b>>12) & 0xf]));
+      *((unsigned short *) data) = (b >> (16 - wd));
+#endif
     }
 
   cairo_surface_mark_dirty (surface);
@@ -1392,6 +1405,45 @@ x_after_update_window_line (struct window *w, struct glyph_row *desired_row)
   }
 #endif
 }
+
+#ifndef USE_CAIRO
+static void
+x_define_fringe_bitmap (int which, unsigned short *bits, int h, int wd)
+{
+  /* On X, we bit-swap the built-in bitmaps and reduce bitmap */
+  /* from short to char array if width is <= 8 bits. */
+  int j;
+
+  if (wd <= 8)
+    {
+      unsigned char *cbits = (unsigned char *)bits;
+      for (j = 0; j < h; j++)
+        {
+          unsigned short b = *bits++;
+          unsigned char c;
+          c = (unsigned char)((swap_nibble[b & 0xf] << 4)
+                              | (swap_nibble[(b>>4) & 0xf]));
+          *cbits++ = (c >> (8 - wd));
+        }
+    }
+  else
+    {
+      for (j = 0; j < h; j++)
+        {
+          unsigned short b = *bits;
+          b = (unsigned short)((swap_nibble[b & 0xf] << 12)
+                               | (swap_nibble[(b>>4) & 0xf] << 8)
+                               | (swap_nibble[(b>>8) & 0xf] << 4)
+                               | (swap_nibble[(b>>12) & 0xf]));
+          b >>= (16 - wd);
+#ifdef WORDS_BIGENDIAN
+          b = bswap_16 (b);
+#endif
+          *bits++ = b;
+        }
+    }
+}
+#endif /* USE_CAIRO */
 
 static void
 x_draw_fringe_bitmap (struct window *w, struct glyph_row *row, struct draw_fringe_bitmap_params *p)
@@ -13362,7 +13414,7 @@ static struct redisplay_interface x_redisplay_interface =
     x_cr_define_fringe_bitmap,
     x_cr_destroy_fringe_bitmap,
 #else
-    0, /* define_fringe_bitmap */
+    x_define_fringe_bitmap,
     0, /* destroy_fringe_bitmap */
 #endif
     x_compute_glyph_string_overhangs,

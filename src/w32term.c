@@ -835,9 +835,22 @@ w32_draw_fringe_bitmap (struct window *w, struct glyph_row *row,
 static void
 w32_define_fringe_bitmap (int which, unsigned short *bits, int h, int wd)
 {
+#ifdef HAVE_NTGUI
+  int i;
+
+  for (i = 0; i < h; i++)
+    {
+      unsigned short b = bits[i];
+      b <<= (16 - wd);
+      /* Windows is little-endian, so the next line is always
+         needed.  */
+      b = ((b >> 8) | (b << 8));
+      bits[i] = b;
+    }
+#endif
   if (which >= max_fringe_bmp)
     {
-      int i = max_fringe_bmp;
+      i = max_fringe_bmp;
       max_fringe_bmp = which + 20;
       fringe_bmp = (HBITMAP *) xrealloc (fringe_bmp, max_fringe_bmp * sizeof (HBITMAP));
       while (i < max_fringe_bmp)

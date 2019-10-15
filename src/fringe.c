@@ -1388,112 +1388,6 @@ If BITMAP overrides a standard fringe bitmap, the original bitmap is restored.  
   return Qnil;
 }
 
-
-/* Initialize bitmap bit.
-
-   On X, we bit-swap the built-in bitmaps and reduce bitmap
-   from short to char array if width is <= 8 bits.
-
-   On MAC with big-endian CPU, we need to byte-swap each short.
-
-   On W32 and MAC (little endian), there's no need to do this.
-*/
-
-#if defined (HAVE_X_WINDOWS)
-static const unsigned char swap_nibble[16] = {
-  0x0, 0x8, 0x4, 0xc,           /* 0000 1000 0100 1100 */
-  0x2, 0xa, 0x6, 0xe,           /* 0010 1010 0110 1110 */
-  0x1, 0x9, 0x5, 0xd,           /* 0001 1001 0101 1101 */
-  0x3, 0xb, 0x7, 0xf};          /* 0011 1011 0111 1111 */
-#endif                          /* HAVE_X_WINDOWS */
-
-static void
-init_fringe_bitmap (int which, struct fringe_bitmap *fb, int once_p)
-{
-  if (once_p || fb->dynamic)
-    {
-#if defined (HAVE_X_WINDOWS)
-      unsigned short *bits = fb->bits;
-      int j;
-
-#ifdef USE_CAIRO
-      for (j = 0; j < fb->height; j++)
-	{
-	  unsigned short b = *bits;
-#ifdef WORDS_BIGENDIAN
-	  *bits++ = (b << (16 - fb->width));
-#else
-	  b = (unsigned short)((swap_nibble[b & 0xf] << 12)
-			       | (swap_nibble[(b>>4) & 0xf] << 8)
-			       | (swap_nibble[(b>>8) & 0xf] << 4)
-			       | (swap_nibble[(b>>12) & 0xf]));
-	  *bits++ = (b >> (16 - fb->width));
-#endif
-	}
-#else  /* not USE_CAIRO */
-      if (fb->width <= 8)
-	{
-	  unsigned char *cbits = (unsigned char *)fb->bits;
-	  for (j = 0; j < fb->height; j++)
-	    {
-	      unsigned short b = *bits++;
-	      unsigned char c;
-	      c = (unsigned char)((swap_nibble[b & 0xf] << 4)
-				  | (swap_nibble[(b>>4) & 0xf]));
-	      *cbits++ = (c >> (8 - fb->width));
-	    }
-	}
-      else
-	{
-	  for (j = 0; j < fb->height; j++)
-	    {
-	      unsigned short b = *bits;
-	      b = (unsigned short)((swap_nibble[b & 0xf] << 12)
-				   | (swap_nibble[(b>>4) & 0xf] << 8)
-				   | (swap_nibble[(b>>8) & 0xf] << 4)
-				   | (swap_nibble[(b>>12) & 0xf]));
-	      b >>= (16 - fb->width);
-#ifdef WORDS_BIGENDIAN
-	      b = bswap_16 (b);
-#endif
-	      *bits++ = b;
-	    }
-	}
-#endif /* not USE_CAIRO */
-#endif /* HAVE_X_WINDOWS */
-
-#ifdef HAVE_NTGUI
-      unsigned short *bits = fb->bits;
-      int j;
-      for (j = 0; j < fb->height; j++)
-	{
-	  unsigned short b = *bits;
-	  b <<= (16 - fb->width);
-	  /* Windows is little-endian, so the next line is always
-	     needed.  */
-	  b = ((b >> 8) | (b << 8));
-	  *bits++ = b;
-	}
-#endif
-    }
-
-  if (!once_p)
-    {
-      /* XXX Is SELECTED_FRAME OK here? */
-      struct redisplay_interface *rif = FRAME_RIF (SELECTED_FRAME ());
-
-      destroy_fringe_bitmap (which);
-
-      if (rif && rif->define_fringe_bitmap)
-	rif->define_fringe_bitmap (which, fb->bits, fb->height, fb->width);
-
-      fringe_bitmaps[which] = fb;
-      if (which >= max_used_fringe_bitmap)
-	max_used_fringe_bitmap = which + 1;
-    }
-}
-
-
 DEFUN ("define-fringe-bitmap", Fdefine_fringe_bitmap, Sdefine_fringe_bitmap,
        2, 5, 0,
        doc: /* Define fringe bitmap BITMAP from BITS of size HEIGHT x WIDTH.
@@ -1624,7 +1518,17 @@ If BITMAP already exists, the existing definition is replaced.  */)
 
   *xfb = fb;
 
-  init_fringe_bitmap (n, xfb, 0);
+  /* XXX Is SELECTED_FRAME OK here? */
+  struct redisplay_interface *rif = FRAME_RIF (SELECTED_FRAME ());
+
+  destroy_fringe_bitmap (n);
+
+  if (rif && rif->define_fringe_bitmap)
+    rif->define_fringe_bitmap (n, xfb->bits, xfb->height, xfb->width);
+
+  fringe_bitmaps[n] = xfb;
+  if (n >= max_used_fringe_bitmap)
+    max_used_fringe_bitmap = n + 1;
 
   return bitmap;
 }
@@ -1742,19 +1646,9 @@ mark_fringe_data (void)
 
 /* Initialize this module when Emacs starts.  */
 
-static void init_fringe_once_for_pdumper (void);
-
 void
 init_fringe_once (void)
 {
-  pdumper_do_now_and_after_load (init_fringe_once_for_pdumper);
-}
-
-static void
-init_fringe_once_for_pdumper (void)
-{
-  for (int bt = NO_FRINGE_BITMAP + 1; bt < MAX_STANDARD_FRINGE_BITMAPS; bt++)
-    init_fringe_bitmap (bt, &standard_bitmaps[bt], 1);
 }
 
 void
