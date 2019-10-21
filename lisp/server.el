@@ -1304,7 +1304,16 @@ The following commands are accepted by the client:
   ;; including code that needs to wait.
   (with-local-quit
     (condition-case err
-        (let* ((buffers (server-visit-files files proc nowait))
+        (let* (;; Delay messages to avoid auto raising frame (Bug#37826).
+               (messages nil)
+               (delay (lambda (_ fmt &rest args)
+                        (let ((msg (and fmt (apply #'format-message fmt args))))
+                          (car (push msg messages)))))
+               (buffers (unwind-protect
+                            (progn
+                              (advice-add #'message :around delay)
+                              (server-visit-files files proc nowait))
+                          (advice-remove #'message delay)))
                ;; If we were told only to open a new client, obey
                ;; `initial-buffer-choice' if it specifies a file
                ;; or a function.
@@ -1325,6 +1334,10 @@ The following commands are accepted by the client:
                           ;; Switch to initial buffer in case the frame was reused.
                           (when initial-buffer
                             (switch-to-buffer initial-buffer 'norecord))))))
+          ;; Show all delayed messages in the new frame (if any).
+          (with-selected-frame (or frame (selected-frame))
+            (dolist (msg (nreverse messages))
+              (message msg)))
 
           (mapc #'funcall (nreverse commands))
 
