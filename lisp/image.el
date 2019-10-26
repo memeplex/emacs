@@ -442,11 +442,11 @@ use its file extension as image type.
 
 Optional DATA-P non-nil means FILE-OR-DATA is a string containing image data.
 
-Optional PROPS are additional image attributes to assign to the image,
-like, e.g. `:mask MASK'.  If the property `:scale' is not given and the
-display has a high resolution (more exactly, when the average width of a
-character in the default font is more than 10 pixels), the image is
-automatically scaled up in proportion to the default font.
+Optional PROPS are additional image attributes to assign to the
+image, like, e.g. `:mask MASK'.
+
+If the display has a high resolution the image is automatically
+scaled up.
 
 Value is the image created, or nil if images of type TYPE are not supported.
 
@@ -465,10 +465,7 @@ Image file names that are not absolute are searched for in the
           data-p t))
   (when (image-type-available-p type)
     (append (list 'image :type type (if data-p :data :file) file-or-data)
-            (and (not (plist-get props :scale))
-                 (list :scale
-                       (image-compute-scaling-factor image-scaling-factor)))
-	    props)))
+            props)))
 
 (defun image--set-property (image property value)
   "Set PROPERTY in IMAGE to VALUE.

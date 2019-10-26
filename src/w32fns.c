@@ -5866,6 +5866,9 @@ DEFUN ("x-create-frame", Fx_create_frame, Sx_create_frame,
   else
     f = make_frame (true);
 
+  f->scale_x = dpyinfo->resx / 96;
+  f->scale_y = dpyinfo->resy / 96;
+
   XSETFRAME (frame, f);
 
   parent_frame = gui_display_get_arg (dpyinfo, parameters, Qparent_frame,

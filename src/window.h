@@ -828,14 +828,14 @@ wset_next_buffers (struct window *w, Lisp_Object val)
    + WINDOW_RIGHT_MARGIN_WIDTH (W))
 
 /* Pixel-widths of fringes.  */
-#define WINDOW_LEFT_FRINGE_WIDTH(W)			\
-  (W->left_fringe_width >= 0				\
-   ? W->left_fringe_width				\
+#define WINDOW_LEFT_FRINGE_WIDTH(W)				\
+  (W->left_fringe_width >= 0					\
+   ? (W->left_fringe_width * WINDOW_XFRAME (W)->scale_x)	\
    : FRAME_LEFT_FRINGE_WIDTH (WINDOW_XFRAME (W)))
 
-#define WINDOW_RIGHT_FRINGE_WIDTH(W)			\
-  (W->right_fringe_width >= 0				\
-   ? W->right_fringe_width				\
+#define WINDOW_RIGHT_FRINGE_WIDTH(W)				\
+  (W->right_fringe_width >= 0					\
+   ? (W->right_fringe_width * WINDOW_XFRAME (W)->scale_x)	\
    : FRAME_RIGHT_FRINGE_WIDTH (WINDOW_XFRAME (W)))
 
 #define WINDOW_FRINGES_WIDTH(W)		\

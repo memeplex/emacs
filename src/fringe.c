@@ -602,9 +602,9 @@ draw_fringe_bitmap_1 (struct window *w, struct glyph_row *row, int left_p, int o
 
   p.which = which;
   p.bits = fb->bits;
-  p.wd = fb->width;
+  p.wd = fb->width * f->scale_x;
 
-  p.h = fb->height;
+  p.h = fb->height * f->scale_y;
   p.dh = (period > 0 ? (p.y % period) : 0);
   p.h -= p.dh;
 

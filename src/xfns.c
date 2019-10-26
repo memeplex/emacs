@@ -3736,6 +3736,9 @@ This function is an internal primitive--use `make-frame' instead.  */)
   else
     f = make_frame (true);
 
+  f->scale_x = dpyinfo->resx / 96;
+  f->scale_y = dpyinfo->resy / 96;
+
   parent_frame = gui_display_get_arg (dpyinfo,
                                       parms,
                                       Qparent_frame,

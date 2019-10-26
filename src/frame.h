@@ -636,6 +636,9 @@ struct frame
   unsigned long background_pixel;
   unsigned long foreground_pixel;
 
+  /* Factors used to scale pixel geometries.  */
+  double scale_x, scale_y;
+
 #ifdef NS_IMPL_COCOA
   /* NSAppearance theme used on this frame.  */
   enum ns_appearance_type ns_appearance;
@@ -1415,12 +1418,12 @@ FRAME_FRINGE_COLS (struct frame *f)
 INLINE int
 FRAME_LEFT_FRINGE_WIDTH (struct frame *f)
 {
-  return frame_dimension (f->left_fringe_width);
+  return frame_dimension (f->left_fringe_width) * f->scale_x;
 }
 INLINE int
 FRAME_RIGHT_FRINGE_WIDTH (struct frame *f)
 {
-  return frame_dimension (f->right_fringe_width);
+  return frame_dimension (f->right_fringe_width) * f->scale_x;
 }
 
 /* Total width of fringes in pixels.  */

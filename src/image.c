@@ -2104,6 +2104,8 @@ image_set_transform (struct frame *f, struct image *img)
   /* Determine size.  */
   int width, height;
   compute_image_size (img->width, img->height, img->spec, &width, &height);
+  width *= f->scale_x;
+  height *= f->scale_y;
 
   /* Determine rotation.  */
   double rotation = 0.0;
@@ -8946,6 +8948,8 @@ imagemagick_load_image (struct frame *f, struct image *img,
 
   if (desired_width != -1 && desired_height != -1)
     {
+      desired_width *= f->scale_x;
+      desired_height *= f->scale_y;
       status = MagickScaleImage (image_wand, desired_width, desired_height);
       if (status == MagickFalse)
 	{

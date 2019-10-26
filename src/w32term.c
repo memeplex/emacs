@@ -304,22 +304,6 @@ w32_restore_glyph_string_clip (struct glyph_string *s)
     }
 }
 
-static void
-w32_get_scale_factor(struct w32_display_info *dpyinfo, int *scale_x, int *scale_y)
-{
-  const int base_res = 96;
-
-  *scale_x = *scale_y = 1;
-
-  if (dpyinfo)
-    {
-      if (dpyinfo->resx > base_res)
-	*scale_x = floor (dpyinfo->resx / base_res);
-      if (dpyinfo->resy > base_res)
-	*scale_y = floor (dpyinfo->resy / base_res);
-    }
-}
-
 /*
    Draw a wavy line under S. The wave fills wave_height pixels from y0.
 
@@ -336,8 +320,7 @@ w32_draw_underwave (struct glyph_string *s, COLORREF color)
 {
   struct w32_display_info *dpyinfo = FRAME_DISPLAY_INFO (s->f);
 
-  int scale_x, scale_y;
-  w32_get_scale_factor (dpyinfo, &scale_x, &scale_y);
+  double scale_x = s->f->scale_x, scale_y = s->f->scale_y;
 
   int wave_height = 3 * scale_y, wave_length = 2 * scale_x, thickness = scale_y;
   int dx, dy, x0, y0, width, x1, y1, x2, y2, odd, xmax;

@@ -618,7 +618,7 @@ x_cr_destroy_fringe_bitmap (int which)
 static void
 x_cr_draw_image (struct frame *f, GC gc, cairo_pattern_t *image,
 		 int src_x, int src_y, int width, int height,
-		 int dest_x, int dest_y, bool overlay_p)
+		 int dest_x, int dest_y, bool overlay_p, bool scale)
 {
   cairo_t *cr = x_begin_cr_clip (f, gc);
 
@@ -635,6 +635,8 @@ x_cr_draw_image (struct frame *f, GC gc, cairo_pattern_t *image,
 
   cairo_surface_t *surface;
   cairo_pattern_get_surface (image, &surface);
+  if (scale)
+    cairo_surface_set_device_scale (surface, 1. / f->scale_x, 1. / f->scale_y);
   cairo_format_t format = cairo_image_surface_get_format (surface);
   if (format != CAIRO_FORMAT_A8 && format != CAIRO_FORMAT_A1)
     {
@@ -1485,7 +1487,7 @@ x_draw_fringe_bitmap (struct window *w, struct glyph_row *row, struct draw_fring
 				    : face->foreground));
       XSetBackground (display, gc, face->background);
       x_cr_draw_image (f, gc, fringe_bmp[p->which], 0, p->dh,
-		       p->wd, p->h, p->x, p->y, p->overlay_p);
+		       p->wd, p->h, p->x, p->y, p->overlay_p, true);
       XSetForeground (display, gc, gcv.foreground);
       XSetBackground (display, gc, gcv.background);
     }
@@ -3156,7 +3158,7 @@ x_draw_image_foreground (struct glyph_string *s)
       x_set_glyph_string_clipping (s);
       x_cr_draw_image (s->f, s->gc, s->img->cr_data,
 		       s->slice.x, s->slice.y, s->slice.width, s->slice.height,
-		       x, y, true);
+		       x, y, true, false);
       if (!s->img->mask)
 	{
 	  /* When the image has a mask, we can expect that at
@@ -3663,23 +3665,6 @@ x_draw_stretch_glyph_string (struct glyph_string *s)
   s->background_filled_p = true;
 }
 
-static void
-x_get_scale_factor(Display *disp, int *scale_x, int *scale_y)
-{
-  const int base_res = 96;
-  struct x_display_info * dpyinfo = x_display_info_for_display (disp);
-
-  *scale_x = *scale_y = 1;
-
-  if (dpyinfo)
-    {
-      if (dpyinfo->resx > base_res)
-	*scale_x = floor (dpyinfo->resx / base_res);
-      if (dpyinfo->resy > base_res)
-	*scale_y = floor (dpyinfo->resy / base_res);
-    }
-}
-
 /*
    Draw a wavy line under S. The wave fills wave_height pixels from y0.
 
@@ -3693,12 +3678,8 @@ x_get_scale_factor(Display *disp, int *scale_x, int *scale_y)
 static void
 x_draw_underwave (struct glyph_string *s)
 {
-  Display *display = FRAME_X_DISPLAY (s->f);
-
   /* Adjust for scale/HiDPI.  */
-  int scale_x, scale_y;
-
-  x_get_scale_factor (display, &scale_x, &scale_y);
+  double scale_x = s->f->scale_x, scale_y = s->f->scale_y;
 
   int wave_height = 3 * scale_y, wave_length = 2 * scale_x;
 
@@ -3709,6 +3690,7 @@ x_draw_underwave (struct glyph_string *s)
   int dx, dy, x0, y0, width, x1, y1, x2, y2, xmax, thickness = scale_y;;
   bool odd;
   XRectangle wave_clip, string_clip, final_clip;
+  Display *display = FRAME_X_DISPLAY (s->f);
 
   dx = wave_length;
   dy = wave_height - 1;

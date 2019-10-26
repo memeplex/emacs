@@ -1121,6 +1121,8 @@ DEFUN ("x-create-frame", Fx_create_frame, Sx_create_frame,
   else
       f = make_frame (1);
 
+  f->scale_x = f->scale_y = 1;
+
   XSETFRAME (frame, f);
 
   f->terminal = dpyinfo->terminal;
